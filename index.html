@@ -1,0 +1,262 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arda'yı Seviyon mu? 💗</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;min-height:100vh;overflow:hidden;
+ font-family:Arial,sans-serif;color:white;text-align:center;
+ background:radial-gradient(circle at top,#49135d,#160822 55%,#05020c);
+}
+#stars{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+main{position:relative;z-index:2;min-height:100vh;
+ display:flex;align-items:center;justify-content:center;padding:20px}
+.card{width:100%;max-width:500px;animation:appear 1s ease}
+@keyframes appear{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+.pill{display:inline-block;border:1px solid #ff83cf88;
+ padding:9px 16px;border-radius:30px;color:#ffbce5;
+ background:#ffffff0c;letter-spacing:2px;font-size:12px}
+h1{font-size:clamp(38px,10vw,62px);margin:24px 0 12px;
+ background:linear-gradient(90deg,#fff,#ff70c5,#c7a2ff);
+ -webkit-background-clip:text;color:transparent}
+p{color:#e5cce9;line-height:1.7}
+.heart{font-size:105px;margin:24px auto;
+ filter:drop-shadow(0 0 22px #ff2d9b);
+ animation:heart 2s ease-in-out infinite;position:relative}
+@keyframes heart{
+ 0%,100%{transform:translateY(0) rotate(-7deg) scale(1)}
+ 50%{transform:translateY(-15px) rotate(7deg) scale(1.13)}
+}
+.question{font-size:25px;font-weight:bold;margin:20px 0}
+.question span{color:#ff78c8}
+.arena{height:115px;position:relative;max-width:360px;margin:auto}
+button{font-size:17px;font-weight:bold;color:white;border:0;
+ border-radius:15px;padding:15px 23px;cursor:pointer;
+ touch-action:manipulation}
+#yes{background:linear-gradient(135deg,#ff83ce,#ff168b,#a52bff);
+ box-shadow:0 0 25px #ff168b88;position:absolute;left:8px;top:25px;
+ z-index:5;white-space:nowrap}
+#no{background:#ffffff12;border:1px solid #ffffff33;
+ position:absolute;right:8px;top:25px}
+#bar{height:6px;background:#ffffff20;border-radius:9px;
+ overflow:hidden;max-width:300px;margin:10px auto}
+#fill{height:100%;width:0;background:linear-gradient(90deg,#ff3b9d,#b77aff)}
+#status{font-size:14px;min-height:25px;color:#ffc4e7}
+.hidden{display:none!important}
+#ending h1{font-size:48px}
+#bouquet{font-size:100px;animation:heart 2s infinite}
+.message{padding:22px;border:1px solid #ffffff30;
+ border-radius:22px;background:#ffffff0d;line-height:1.9;
+ box-shadow:0 0 35px #ff2d9b22}
+#replay{margin-top:20px;background:#ffffff15;border:1px solid #ffffff44}
+.flower{position:fixed;top:-50px;z-index:10;pointer-events:none;
+ animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(115vh) rotate(720deg);opacity:.2}}
+small{display:block;color:#a994b9;margin-top:20px}
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<main>
+<section class="card" id="game">
+ <div class="pill">✦ KALBİNE KÜÇÜK BİR GÖREV ✦</div>
+ <div class="heart">💗</div>
+ <h1>Bir sorum var...</h1>
+ <p>Doğru cevabı bulabilecek misin?<br>
+ Hazırsan oyunumuz başlıyor! ✨</p>
+ <div class="question"><span>Arda'yı</span> seviyon mu? 💕</div>
+ <p id="status">EVET tuşunu yakalayabilir misin? 😈</p>
+ <div class="arena" id="arena">
+  <button id="yes">EVET 💖</button>
+  <button id="no">Hayır 🙈</button>
+ </div>
+ <div id="bar"><div id="fill"></div></div>
+ <p id="clock">30 saniyelik görev!</p>
+ <small>✨ Kalbinin sesini dinle ✨</small>
+</section>
+
+<section class="card hidden" id="ending">
+ <div class="pill">✦ GÖREV TAMAMLANDI ✦</div>
+ <h1>Senin için... 💗</h1>
+ <div id="bouquet">💐</div>
+ <div class="message">
+  🌸 🌷 🌸<br>
+  <b>Güzel kalpli insan!</b><br>
+  Bu çiçekler sana küçük bir mutluluk
+  getirsin. Her çiçek bir gülümseme,
+  her yaprak güzel bir anı olsun. 💖<br>
+  <b>İyi ki varsın! 🌹</b><br>
+  🌸 🌷 🌸
+ </div>
+ <button id="replay">↻ Baştan oyna</button>
+</section>
+</main>
+<script>
+const yes=document.getElementById('yes');
+const no=document.getElementById('no');
+const arena=document.getElementById('arena');
+const statusText=document.getElementById('status');
+const clock=document.getElementById('clock');
+const fill=document.getElementById('fill');
+const game=document.getElementById('game');
+const ending=document.getElementById('ending');
+
+let startTime=0,locked=false,finished=false,raf=0;
+const duration=30000;
+let lastDodge=0;
+
+function dodge(){
+ if(locked||finished)return;
+ if(!startTime)startTime=performance.now();
+
+ const bounds=arena.getBoundingClientRect();
+ const button=yes.getBoundingClientRect();
+ const maxX=Math.max(0,bounds.width-button.width);
+ const maxY=Math.max(0,bounds.height-button.height);
+
+ yes.style.left=Math.random()*maxX+'px';
+ yes.style.top=Math.random()*maxY+'px';
+ yes.style.transform='rotate('+(Math.random()*16-8)+'deg)';
+
+ statusText.textContent=[
+  'Hadi ama, yakalayabilecek misin? 😂',
+  'EVET tuşu senden kaçıyor! 💨',
+  'Az kaldı, pes etme! 💗',
+  'Kalbin ne diyor acaba? 👀',
+  'Sonunda yakalayacaksın! ✨'
+ ][Math.floor(Math.random()*5)];
+
+ burst(8);
+ lastDodge=performance.now();
+}
+
+function tick(now){
+ if(finished)return;
+ if(!startTime)startTime=now;
+
+ const elapsed=now-startTime;
+ const remaining=Math.max(0,duration-elapsed);
+ fill.style.width=Math.min(100,elapsed/duration*100)+'%';
+
+ if(remaining<=0){
+  locked=true;
+  yes.style.position='relative';
+  yes.style.left='auto';
+  yes.style.top='auto';
+  yes.style.transform='none';
+  yes.style.display='inline-block';
+  no.classList.add('hidden');
+  statusText.textContent='Başardın! Artık EVET tuşu sabit! 🌷';
+  clock.textContent='Şimdi EVET’e bas! 💖';
+  return;
+ }
+
+ clock.textContent=Math.ceil(remaining/1000)+' saniye kaldı!';
+ raf=requestAnimationFrame(tick);
+}
+
+function startGame(){
+ cancelAnimationFrame(raf);
+ startTime=performance.now();
+ locked=false;
+ finished=false;
+ fill.style.width='0%';
+ yes.style.position='absolute';
+ yes.style.left='8px';
+ yes.style.top='25px';
+ yes.style.transform='none';
+ no.classList.remove('hidden');
+ statusText.textContent='EVET tuşunu yakala! 😈';
+ raf=requestAnimationFrame(tick);
+}
+
+function burst(count){
+ const symbols=['✨','💗','🌸','💖','✦'];
+ for(let i=0;i<count;i++){
+  const el=document.createElement('span');
+  el.className='flower';
+  el.textContent=symbols[Math.floor(Math.random()*symbols.length)];
+  el.style.left=Math.random()*100+'vw';
+  el.style.animationDuration=(2+Math.random()*3)+'s';
+  el.style.fontSize=(15+Math.random()*20)+'px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),5500);
+ }
+}
+
+function win(){
+ if(!locked||finished)return;
+ finished=true;
+ cancelAnimationFrame(raf);
+ game.classList.add('hidden');
+ ending.classList.remove('hidden');
+ for(let i=0;i<100;i++){
+  setTimeout(()=>burst(2),i*35);
+ }
+}
+
+yes.addEventListener('pointerenter',()=>{
+ if(!locked)dodge();
+});
+
+yes.addEventListener('pointerdown',e=>{
+ if(!locked){
+  e.preventDefault();
+  dodge();
+ }else{
+  win();
+ }
+});
+
+no.addEventListener('click',()=>{
+ if(!startTime)startGame();
+ if(!locked){
+  dodge();
+  statusText.textContent='Bir daha düşün bakalım! 🙈';
+ }
+});
+
+document.getElementById('replay').addEventListener('click',()=>{
+ ending.classList.add('hidden');
+ game.classList.remove('hidden');
+ startGame();
+});
+
+// Hareketli yıldızlar
+const canvas=document.getElementById('stars');
+const ctx=canvas.getContext('2d');
+let stars=[];
+function resize(){
+ canvas.width=innerWidth;
+ canvas.height=innerHeight;
+ stars=Array.from({length:100},()=>({
+  x:Math.random()*canvas.width,
+  y:Math.random()*canvas.height,
+  r:Math.random()*1.8+.3,
+  a:Math.random()
+ }));
+}
+function draw(){
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ for(const s of stars){
+  s.a+=.025;
+  ctx.globalAlpha=.35+Math.abs(Math.sin(s.a))*.65;
+  ctx.fillStyle='#ffd8f4';
+  ctx.beginPath();
+  ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+  ctx.fill();
+ }
+ ctx.globalAlpha=1;
+ requestAnimationFrame(draw);
+}
+addEventListener('resize',resize);
+resize();
+draw();
+</script>
+</body>
+</html>
+
